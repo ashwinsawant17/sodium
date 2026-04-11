@@ -1,0 +1,10 @@
+/home/ashwin/personal/sodium/build/CMakeFiles/edit_cache.dir
+/home/ashwin/personal/sodium/build/CMakeFiles/rebuild_cache.dir
+/home/ashwin/personal/sodium/build/src/CMakeFiles/core.dir
+/home/ashwin/personal/sodium/build/src/CMakeFiles/edit_cache.dir
+/home/ashwin/personal/sodium/build/src/CMakeFiles/rebuild_cache.dir
+/home/ashwin/personal/sodium/build/apps/server/CMakeFiles/edit_cache.dir
+/home/ashwin/personal/sodium/build/apps/server/CMakeFiles/rebuild_cache.dir
+/home/ashwin/personal/sodium/build/apps/client/CMakeFiles/sodium-client.dir
+/home/ashwin/personal/sodium/build/apps/client/CMakeFiles/edit_cache.dir
+/home/ashwin/personal/sodium/build/apps/client/CMakeFiles/rebuild_cache.dir

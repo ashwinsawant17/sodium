@@ -1,0 +1,365 @@
+# C++ TCP Server + Client Project Template (Production-Oriented)
+
+This is a clean, scalable, and recruiter-quality project layout for building:
+
+* TCP server(s)
+* Native client(s)
+* Shared libraries (networking, protocol, utilities)
+* Optional UI (OpenGL / ImGui ready)
+
+---
+
+## 📁 Directory Structure
+
+```
+project-root/
+├── CMakeLists.txt
+├── cmake/
+│   ├── CompilerWarnings.cmake
+│   ├── Sanitizers.cmake
+│   └── Dependencies.cmake
+│
+├── external/                  # third-party headers/libs (git submodules or vendored)
+│   └── (e.g. glfw, imgui, asio, etc.)
+│
+├── include/                   # public headers (installed interface)
+│   ├── common/
+│   │   ├── types.hpp
+│   │   ├── logging.hpp
+│   │   └── error.hpp
+│   │
+│   ├── net/
+│   │   ├── socket.hpp
+│   │   ├── tcp_server.hpp
+│   │   ├── tcp_connection.hpp
+│   │   └── event_loop.hpp
+│   │
+│   ├── protocol/
+│   │   ├── message.hpp
+│   │   ├── serializer.hpp
+│   │   └── parser.hpp
+│   │
+│   └── util/
+│       ├── buffer.hpp
+│       ├── thread_pool.hpp
+│       └── config.hpp
+│
+├── src/                       # implementation files
+│   ├── common/
+│   │   ├── logging.cpp
+│   │   └── error.cpp
+│   │
+│   ├── net/
+│   │   ├── socket.cpp
+│   │   ├── tcp_server.cpp
+│   │   ├── tcp_connection.cpp
+│   │   └── event_loop.cpp
+│   │
+│   ├── protocol/
+│   │   ├── message.cpp
+│   │   ├── serializer.cpp
+│   │   └── parser.cpp
+│   │
+│   └── util/
+│       ├── buffer.cpp
+│       ├── thread_pool.cpp
+│       └── config.cpp
+│
+├── apps/
+│   ├── server/
+│   │   ├── main.cpp
+│   │   └── CMakeLists.txt
+│   │
+│   ├── client/
+│   │   ├── main.cpp
+│   │   └── CMakeLists.txt
+│   │
+│   └── gui_client/            # optional OpenGL UI
+│       ├── main.cpp
+│       └── CMakeLists.txt
+│
+├── tests/
+│   ├── CMakeLists.txt
+│   ├── test_protocol.cpp
+│   └── test_server.cpp
+│
+├── scripts/
+│   ├── build.sh
+│   └── run_server.sh
+│
+├── config/
+│   └── server_config.json
+│
+├── .gitignore
+└── README.md
+```
+
+---
+
+## 🧱 Architecture Overview
+
+### 1. Core Layers
+
+```
+[ Applications ]  -> server/, client/
+        ↓
+[ Protocol Layer ] -> message format, serialization
+        ↓
+[ Networking ]     -> sockets, connections, event loop
+        ↓
+[ Utilities ]      -> logging, threading, buffers
+```
+
+---
+
+## 🔌 Networking Design
+
+### tcp_server.hpp
+
+Responsibilities:
+
+* Accept new connections
+* Own event loop
+* Dispatch connections to worker threads
+
+### tcp_connection.hpp
+
+Responsibilities:
+
+* Manage a single client
+* Read/write buffers
+* Parse messages
+
+### event_loop.hpp
+
+Options:
+
+* `select()` (simple)
+* `poll()`
+* `epoll` (Linux, recommended for performance)
+
+---
+
+## 🧵 Threading Model
+
+Recommended: **thread pool + non-blocking I/O**
+
+* 1 acceptor thread
+* N worker threads
+* Each worker handles multiple connections
+
+Alternative (simpler):
+
+* Thread-per-connection (not scalable, but easy)
+
+---
+
+## 📦 Protocol Layer
+
+Define a simple binary or JSON protocol:
+
+Example:
+
+```
+[ length (uint32) ][ type (uint16) ][ payload ... ]
+```
+
+Files:
+
+* `message.hpp` → struct definitions
+* `serializer.hpp` → encode
+* `parser.hpp` → decode
+
+---
+
+## ⚙️ Root CMakeLists.txt
+
+```cmake
+cmake_minimum_required(VERSION 3.20)
+project(TCPProject LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+add_subdirectory(src)
+add_subdirectory(apps/server)
+add_subdirectory(apps/client)
+add_subdirectory(tests)
+```
+
+---
+
+## ⚙️ src/CMakeLists.txt
+
+```cmake
+add_library(core
+    common/logging.cpp
+    common/error.cpp
+    net/socket.cpp
+    net/tcp_server.cpp
+    net/tcp_connection.cpp
+    net/event_loop.cpp
+    protocol/message.cpp
+    protocol/serializer.cpp
+    protocol/parser.cpp
+    util/buffer.cpp
+    util/thread_pool.cpp
+    util/config.cpp
+)
+
+target_include_directories(core PUBLIC ${PROJECT_SOURCE_DIR}/include)
+```
+
+---
+
+## ⚙️ apps/server/CMakeLists.txt
+
+```cmake
+add_executable(server main.cpp)
+
+target_link_libraries(server PRIVATE core)
+```
+
+---
+
+## ⚙️ apps/client/CMakeLists.txt
+
+```cmake
+add_executable(client main.cpp)
+
+target_link_libraries(client PRIVATE core)
+```
+
+---
+
+## 🧠 Example server main.cpp
+
+```cpp
+#include "net/tcp_server.hpp"
+
+int main() {
+    TcpServer server(8080);
+    server.start();
+}
+```
+
+---
+
+## 🧠 Key Classes (Design Sketch)
+
+### TcpServer
+
+* `start()`
+* `accept_loop()`
+* owns thread pool
+
+### TcpConnection
+
+* `read()`
+* `write()`
+* `handle_message()`
+
+### ThreadPool
+
+* task queue
+* worker threads
+
+---
+
+## 🔧 External Dependencies Strategy
+
+### Option 1 (recommended): git submodules
+
+```
+external/
+  └── asio/
+```
+
+### Option 2: FetchContent in CMake
+
+---
+
+## 🧪 Testing
+
+Use something like:
+
+* Catch2 or GoogleTest
+
+---
+
+## 🚫 .gitignore
+
+```
+# Build
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+
+# Binaries
+*.exe
+*.out
+*.app
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Compiled objects
+*.o
+*.obj
+*.so
+*.a
+*.dll
+```
+
+---
+
+## ✅ What to Commit
+
+✔ Commit:
+
+* src/
+* include/
+* apps/
+* tests/
+* CMakeLists.txt
+* cmake/
+* README.md
+
+❌ Do NOT commit:
+
+* build/
+* binaries
+* temporary files
+
+---
+
+## 🚀 Extensions You Can Add
+
+* epoll-based event loop
+* TLS (OpenSSL)
+* GUI client (OpenGL + ImGui)
+* message authentication
+* load testing tool
+
+---
+
+## 💡 Final Advice
+
+This structure is intentionally:
+
+* modular
+* testable
+* scalable
+
+If you implement this cleanly (especially event loop + protocol), this becomes a **very strong systems project**.
+
+If you want next step: I can give you a **minimal working implementation of TcpServer + TcpConnection** to bootstrap this.

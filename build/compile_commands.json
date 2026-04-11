@@ -1,0 +1,14 @@
+[
+{
+  "directory": "/home/ashwin/personal/sodium/build/src",
+  "command": "/usr/bin/g++  -I/home/ashwin/personal/sodium/include -g -std=gnu++20 -o CMakeFiles/core.dir/net/socket.cpp.o -c /home/ashwin/personal/sodium/src/net/socket.cpp",
+  "file": "/home/ashwin/personal/sodium/src/net/socket.cpp",
+  "output": "src/CMakeFiles/core.dir/net/socket.cpp.o"
+},
+{
+  "directory": "/home/ashwin/personal/sodium/build/apps/client",
+  "command": "/usr/bin/g++  -I/home/ashwin/personal/sodium/include -g -std=gnu++20 -o CMakeFiles/sodium-client.dir/main.cpp.o -c /home/ashwin/personal/sodium/apps/client/main.cpp",
+  "file": "/home/ashwin/personal/sodium/apps/client/main.cpp",
+  "output": "apps/client/CMakeFiles/sodium-client.dir/main.cpp.o"
+}
+]

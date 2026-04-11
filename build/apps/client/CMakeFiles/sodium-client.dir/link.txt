@@ -1,0 +1,1 @@
+/usr/bin/g++ -g "CMakeFiles/sodium-client.dir/main.cpp.o" -o sodium-client  ../../src/libcore.a 
