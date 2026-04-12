@@ -9,7 +9,6 @@
     #define NOMINMAX
     #include <winsock2.h>
     #include <ws2tcpip.h>
-    using socket_t = SOCKET;
 #else
     #include <sys/types.h>
     #include <sys/socket.h>
@@ -17,11 +16,21 @@
     #include <arpa/inet.h>
     #include <unistd.h>
     #include <fcntl.h>
-    using socket_t = int;
+    #include <netdb.h>
+    #define INVALID_SOCKET (static_cast<net::socket_t>(~0))
 #endif
 
 
 namespace net {
+
+    #ifdef _WIN32
+    // socket type
+    using socket_t = SOCKET;
+    #else
+    // socket type
+    using socket_t = int;
+    #endif
+
     // initialize program for working with sockets, really only necessary in Windows
     void init_sockets();
 
@@ -46,10 +55,13 @@ namespace net {
     // accept a connection, returns the new connected socket
     socket_t accept_socket(socket_t server_fd);
 
+    // attempt to connect to a host:port address returning the socket of the connection
+    socket_t connect_to_host(std::string host, std::string port);
+
     // attempts to send all the data on a connection, returns the number of bytes sent, returning -1 on error
     int send_all(socket_t s, const uint8_t *data, size_t len);
 
     // receive a specified number of bytes on a socket
-    int recv_some(socket_t s, uint8_t *buffer, size_t len);
+    int receive(socket_t s, uint8_t *buffer, size_t len);
 
 }

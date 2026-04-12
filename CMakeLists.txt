@@ -16,8 +16,12 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 # Library source dir
 add_subdirectory(src)
 
-# Server executable source dir
-add_subdirectory(apps/server)
+# Server executable source dir, only for POSIX systems with epoll
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_subdirectory(apps/server)
+else()
+    message(STATUS "Server disabled: requires Linux (epoll)")
+endif()
 
 # Client executable source dir
 add_subdirectory(apps/client)
