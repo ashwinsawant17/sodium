@@ -4,6 +4,11 @@ add_executable(sodium-client client-main.cpp)
 # Link against the core libraries
 target_link_libraries(sodium-client PRIVATE core)
 
+# Link against necessary external libraries
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_link_libraries(sodium-client PRIVATE ws2_32)
+endif()
+
 # Includes the directories from the include folder
 # technically don't need for now since target_link_libraries takes care of that
 # target_include_directories(sodium-client PUBLIC ${PROJECT_SOURCE_DIR}/include)
