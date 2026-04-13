@@ -1,5 +1,6 @@
 add_library(core
     net/socket.cpp
+    net/server.cpp
     protocol/message.cpp
 )
 
