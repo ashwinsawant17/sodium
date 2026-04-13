@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cstdint>
 #include <vector>
 
@@ -9,18 +11,21 @@ namespace protocol {
     // System: a system message ex: settings update, server updates, etc.
     //
     // Chat: a message between two users
-    enum class Message_Type :  uint8_t {
+    enum class MessageType :  uint8_t {
         System = 1,
         Chat = 2
     };
 
     // Message Struct
     struct Message {
-        Message_Type type;
+        MessageType type;
         std::vector<uint8_t> payload;
     };
 
-    
+    // Chat Payload
+    struct ChatPayload {
+        
+    }
 
 
 
