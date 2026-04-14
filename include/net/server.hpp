@@ -18,7 +18,7 @@ namespace net {
 
             void start();
 
-    }
+    };
 
 
 }

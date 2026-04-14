@@ -1,6 +1,9 @@
 #include "net/socket.hpp"
 #include <iostream>
+#include <memory>
 #include <stdexcept>
+
+#define BUFF_SIZE 128
 
 int main(void) {
     net::init_sockets();
@@ -27,15 +30,37 @@ int main(void) {
         throw std::runtime_error("Connecting to host failed.\n");
     }
 
+    net::set_non_blocking(conn);
+
+    std::string username;
+    std::cout << "Enter your username:\n";
+    std::cin >> username;
+
     // for now, begin a read loop, and just send all the bytes to the server
     do {
+        std::vector<uint8_t> buffer = {'t', 'e', 's', 't'};
+        buffer.reserve(BUFF_SIZE);
+        int bytes_read = 0;
+        bytes_read = net::receive(conn, buffer.data(), buffer.size());
+
+        std::string str(buffer.begin(), buffer.end());
+
+        if (bytes_read > 0) {
+            std::cout << str;
+            std::cout << "\n";
+        }
+
         std::cin >> input;
+        std::string data = username + ": " + input;
+
+
         if (input != "exit") {
+            std::cou
             // TODO: add check for how many bytes are actually sent
             net::send_all(
                 conn, 
-                reinterpret_cast<const uint8_t *>(input.c_str()), 
-                input.length()
+                reinterpret_cast<const uint8_t *>(data.c_str()), 
+                data.length()
             );
         }
     } while (input != "exit");

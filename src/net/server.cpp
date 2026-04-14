@@ -1,5 +1,6 @@
 #include "net/server.hpp"
 #include "net/socket.hpp"
+#include <iostream>
 
 /* library for using epoll */
 #include <sys/epoll.h>
@@ -25,6 +26,12 @@ namespace net {
 
     }
 
+    Server::~Server(){
+        // TODO: probably you should gracefully close all the connections
+        // TODO: probably clean up any new memory
+        cleanup_sockets();
+    }
+
     void Server::start() {
 
         // create the epoll instance
@@ -42,6 +49,8 @@ namespace net {
         std::vector<epoll_event> events(NUM_EVENTS);
 
         // begin the listen loop
+        net::listen_socket(server_socket);
+        std::cout << "Listening on PORT: " << port << "\n";
         while(true) {
             int nfds;
             socket_t conn_sock;
@@ -67,8 +76,16 @@ namespace net {
                     epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn_sock, &ev);
 
                     // TODO: when registering new connection, you also need to generate a UID and send it
-                    clients.insert(conn_sock);
+                    std::cout << "Newly registered connection: " << conn_sock;
+                    auto [iter, success] = clients.insert(conn_sock);
+                    if (success) {
+                        std::cout << "Connection to " << conn_sock << " successful.\n";
+                    } else {
+                        std::cout << "Connection to " << conn_sock << " failed.\n";
+                    }
                 } else {
+                    std::cout << "Received message from " << events[i].data.fd;
+
                     // TODO: for now, broadcast the message to all other 
                     socket_t sender_socket = events[i].data.fd;
 
@@ -77,10 +94,12 @@ namespace net {
                     buffer.reserve(BUFF_SIZE);
 
                     bytes_read = receive(sender_socket, buffer.data(), BUFF_SIZE - 1);
-                    
+                    std::string str(buffer.begin(), buffer.end());
+                    std::cout << str;
 
                     for (const auto& client: clients) {
-
+                        std::cout << "client: " << client;
+                        send_all(client, buffer.data(), buffer.size() * sizeof(uint8_t));
                     }
                 }
             }

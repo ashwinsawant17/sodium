@@ -22,10 +22,7 @@ namespace protocol {
         std::vector<uint8_t> payload;
     };
 
-    // Chat Payload
-    struct ChatPayload {
-        
-    }
+    
 
 
 
