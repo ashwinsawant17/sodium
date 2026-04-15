@@ -41,7 +41,7 @@ namespace net {
         return ioctlsocket(s, FIONBIO, &mode) == 0;
         # else 
         int flags = fcntl(s, F_GETFL, 0);
-        return fcntl(s, F_SETFL, flags | O_NONBLOCK) == 0;
+        return fcntl(s, F_SETFL, flags | O_NONBLOCK) != -1;
         #endif
     }
 

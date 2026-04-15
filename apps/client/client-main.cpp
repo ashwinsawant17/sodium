@@ -2,8 +2,25 @@
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <thread>
 
 #define BUFF_SIZE 128
+
+void listen_print(net::socket_t s, bool* should_continue) {
+    while (*should_continue) {
+        std::vector<uint8_t> buffer;
+        buffer.resize(BUFF_SIZE);
+        int bytes_read = 0;
+        bytes_read = net::receive(s, buffer.data(), buffer.size());
+
+        std::string str(buffer.begin(), buffer.end());
+
+        if (bytes_read > 0) {
+            std::cout << str;
+            std::cout << "\n";
+        }
+    }
+}
 
 int main(void) {
     net::init_sockets();
@@ -30,32 +47,28 @@ int main(void) {
         throw std::runtime_error("Connecting to host failed.\n");
     }
 
-    net::set_non_blocking(conn);
+    bool non_block_success = net::set_non_blocking(conn);
+    if (non_block_success) {
+        std::cout << "Setting non-blocking: SUCCESS\n";
+    } else {
+        std::cout << "Setting non-blocking: FAIL\n";
+    }
 
     std::string username;
     std::cout << "Enter your username:\n";
     std::cin >> username;
 
     // for now, begin a read loop, and just send all the bytes to the server
+    bool should_continue = true;
+    std::thread receiver_thread(listen_print, conn, &should_continue); 
     do {
-        std::vector<uint8_t> buffer = {'t', 'e', 's', 't'};
-        buffer.reserve(BUFF_SIZE);
-        int bytes_read = 0;
-        bytes_read = net::receive(conn, buffer.data(), buffer.size());
-
-        std::string str(buffer.begin(), buffer.end());
-
-        if (bytes_read > 0) {
-            std::cout << str;
-            std::cout << "\n";
-        }
 
         std::cin >> input;
         std::string data = username + ": " + input;
 
 
         if (input != "exit") {
-            std::cou
+            std::cout << "Input received.\n";
             // TODO: add check for how many bytes are actually sent
             net::send_all(
                 conn, 
@@ -65,6 +78,8 @@ int main(void) {
         }
     } while (input != "exit");
 
+    should_continue = false;
+    receiver_thread.join();
     net::cleanup_sockets();
 
     return 0;

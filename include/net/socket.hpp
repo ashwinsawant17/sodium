@@ -40,6 +40,7 @@ namespace net {
     // create a tcp socket, returns type of socket_t
     socket_t create_tcp_socket();
 
+
     // closes a socket, on either Windows or POSIX systems
     void close_socket(socket_t s);
 

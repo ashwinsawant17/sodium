@@ -32,6 +32,8 @@ namespace net {
         cleanup_sockets();
     }
 
+
+
     void Server::start() {
 
         // create the epoll instance
@@ -76,7 +78,7 @@ namespace net {
                     epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn_sock, &ev);
 
                     // TODO: when registering new connection, you also need to generate a UID and send it
-                    std::cout << "Newly registered connection: " << conn_sock;
+                    std::cout << "Newly registered connection: " << conn_sock << "\n";
                     auto [iter, success] = clients.insert(conn_sock);
                     if (success) {
                         std::cout << "Connection to " << conn_sock << " successful.\n";
@@ -84,23 +86,33 @@ namespace net {
                         std::cout << "Connection to " << conn_sock << " failed.\n";
                     }
                 } else {
-                    std::cout << "Received message from " << events[i].data.fd;
+                    std::cout << "Received message from " << events[i].data.fd << "\n";
 
                     // TODO: for now, broadcast the message to all other 
                     socket_t sender_socket = events[i].data.fd;
 
                     int bytes_read { 0 };
                     std::vector<uint8_t> buffer;
-                    buffer.reserve(BUFF_SIZE);
+                    buffer.resize(BUFF_SIZE);
 
                     bytes_read = receive(sender_socket, buffer.data(), BUFF_SIZE - 1);
-                    std::string str(buffer.begin(), buffer.end());
-                    std::cout << str;
+                    
+                    // bytes read was 0, the connection closed gracefully (or -1 if error, for now handle the same way)
+                    // TODO: add separate handling for a gracefully closed connection vs an error
+                    if (bytes_read <= 0) {
+                        close_socket(sender_socket);
+                        clients.erase(sender_socket);
+                    } else {
+                        std::string str(buffer.begin(), buffer.begin() + bytes_read);
 
-                    for (const auto& client: clients) {
-                        std::cout << "client: " << client;
-                        send_all(client, buffer.data(), buffer.size() * sizeof(uint8_t));
+                        for (const auto& client: clients) {
+                            if (client != sender_socket) {
+                                send_all(client, (const uint8_t *) str.c_str(), str.length());
+                            }
+                        }
                     }
+                    
+                    
                 }
             }
         }
