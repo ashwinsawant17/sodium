@@ -23,7 +23,10 @@ namespace protocol {
         std::vector<uint8_t> payload;
     };
 
+<<<<<<< Updated upstream
     
+=======
+>>>>>>> Stashed changes
 
 
 
