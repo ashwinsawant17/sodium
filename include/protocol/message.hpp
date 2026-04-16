@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <string>
 
 namespace protocol {
 
@@ -23,7 +24,23 @@ namespace protocol {
         std::vector<uint8_t> payload;
     };
 
+    // serialize an auth message into a Message Struct
+    Message serialize_auth(std::string username);
 
+    // serialize a chat message into a Message Struct
+    Message serialize_chat(std::string chat_message);
+
+    // deserialize a Message Struct with type of Chat into a chat string
+    std::string deserialize_chat(Message message);
+
+    // deserialize a Message Struct with type of Chat into a chat string
+    std::string deserialize_auth(Message message);
+
+    // serialize a message struct into a byte buffer
+    std::vector<uint8_t> serialize_message(Message message);
+
+    // deserialize a buffer into a message struct (assumes length has already been removed)
+    Message deserialize_message(std::vector<uint8_t> buffer);
 
 
 }
