@@ -13,7 +13,8 @@ namespace protocol {
     // Chat: a message between two users
     enum class MessageType :  uint8_t {
         System = 1,
-        Chat = 2
+        Chat = 2,
+        Auth = 3
     };
 
     // Message Struct
