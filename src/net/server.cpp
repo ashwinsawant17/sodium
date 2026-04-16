@@ -97,7 +97,6 @@ namespace net {
 
                     bytes_read = receive(sender_socket, buffer.data(), BUFF_SIZE - 1);
                     
-<<<<<<< Updated upstream
                     // bytes read was 0, the connection closed gracefully (or -1 if error, for now handle the same way)
                     // TODO: add separate handling for a gracefully closed connection vs an error
                     if (bytes_read <= 0) {
@@ -111,14 +110,7 @@ namespace net {
                                 send_all(client, (const uint8_t *) str.c_str(), str.length());
                             }
                         }
-=======
-
-                    for (const auto& client: clients) {
-                        
->>>>>>> Stashed changes
                     }
-                    
-                    
                 }
             }
         }
