@@ -93,6 +93,32 @@ namespace protocol {
         }
     }
 
+    // deserialize a Message Struct with type of Chat into a chat string
+    std::string deserialize_auth(Message message) {
+        // validate the message type
+        if (message.type != MessageType::Auth) {
+            throw std::invalid_argument("Received Message with non Chat Type");
+        
+        // in the case of valid input, deserialize the payload
+        } else {
+
+            // get the length of the chat message
+            uint16_t chat_len = 0;
+            chat_len = (message.payload[0] << 8) & message.payload[1];
+
+            // correct endianness of chat length
+            chat_len = ntohs(chat_len);
+
+            // lowkey not sure if I did this right, should i just use payload.end()?
+            std::string output(message.payload.begin() + 2, message.payload.begin() + 2 + chat_len);
+            // TODO: why are we even encoding chat length if we encode overall payload length?
+            // I guess it makes it more scalable in case we want to include more nested structures in the payload?
+            
+            return output;
+        }
+    }
+
+    // serialize a message struct into a byte buffer
     std::vector<uint8_t> serialize_message(Message message) {
 
         // get the length of the message
@@ -110,17 +136,29 @@ namespace protocol {
         std::vector<uint8_t> out;
         out.reserve(sizeof(chat_len) + sizeof(message.type) + chat_len);
 
-        // push back the message type
+        // push the message type
         out.push_back(static_cast<uint8_t>(message.type));
 
+
+        // push the chat length
         out.push_back(chat_len & 0xFF);
         out.push_back((chat_len >> 8) & 0xFF);
         out.push_back((chat_len >> 16) & 0xFF);
         out.push_back((chat_len >> 24) & 0xFF);
 
-
         
-    
+        // append the payload
+        out.insert(out.end(), message.payload.begin(), message.payload.end());
+
+        return out;
+    }
+
+    // deserialize a buffer into a message struct (assumes length has already been removed)
+    Message deserialize_message(std::vector<uint8_t> buffer) {
+        std::vector<uint8_t> message(buffer.begin() + 1, buffer.end());
+        MessageType type = static_cast<MessageType>(buffer[0]);
+
+        return Message{type, message};
     }
 
 
