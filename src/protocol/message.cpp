@@ -153,9 +153,9 @@ namespace protocol {
         return out;
     }
 
-    // deserialize a buffer into a message struct (assumes length has already been removed)
-    Message deserialize_message(std::vector<uint8_t> buffer) {
-        std::vector<uint8_t> message(buffer.begin() + 1, buffer.end());
+    // deserialize a buffer into a message struct (assumes length has been removed)
+    Message deserialize_message(uint32_t length, std::vector<uint8_t> buffer) {
+        std::vector<uint8_t> message(buffer.begin() + 1, buffer.begin() + length);
         MessageType type = static_cast<MessageType>(buffer[0]);
 
         return Message{type, message};

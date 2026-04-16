@@ -40,7 +40,7 @@ namespace protocol {
     std::vector<uint8_t> serialize_message(Message message);
 
     // deserialize a buffer into a message struct (assumes length has already been removed)
-    Message deserialize_message(std::vector<uint8_t> buffer);
+    Message deserialize_message(uint32_t length, std::vector<uint8_t> buffer);
 
 
 }

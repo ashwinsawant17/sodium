@@ -1,5 +1,7 @@
 #include "net/server.hpp"
 #include "net/socket.hpp"
+#include "protocol/message.hpp"
+#include <cerrno>
 #include <iostream>
 
 /* library for using epoll */
@@ -30,6 +32,70 @@ namespace net {
         // TODO: probably you should gracefully close all the connections
         // TODO: probably clean up any new memory
         cleanup_sockets();
+    }
+
+    void Server::handle_message(protocol::Message msg) {
+        // TODO: add message handling
+    }
+
+
+    // use the connection and buffer to correctly parse incoming bytes
+    //
+    // calls correct handler based on parsed message type
+    // 
+    // returns False if more bytes need to be read to be parsed, or if it can't be parsed.
+    //
+    // returns True if parsed correctly
+    bool Server::buffered_read(socket_t conn, std::vector<uint8_t>& client_buffer) {
+        bool flag = false;
+        // while data is still readable from the socket...
+        while (errno != EAGAIN && errno != EWOULDBLOCK) {
+
+            // read into the global buffer
+            int bytes_read = receive(conn, global_buffer, SERVER_BUFFER_SIZE);
+
+
+            // if there's an issue reading, do nothing
+            // TODO: add appropriate handline if recv causes error, maybe break out of loop?
+            if (bytes_read != -1) {
+                // append global buffer data to the end of the client_buffer
+                client_buffer.insert(client_buffer.end(), global_buffer, global_buffer + bytes_read);
+
+                // if the size of the buffer is enough to read the length, read it and check if we can parse a message
+                if (client_buffer.size() >= 4) {
+
+                    // read the message length
+                    uint32_t message_len {0};
+                    message_len &= (client_buffer[0] << 24);
+                    message_len &= (client_buffer[1] << 16);
+                    message_len &= (client_buffer[2] << 8);
+                    message_len &= (client_buffer[3]);
+
+                    // if we can read the entire message, parse and handle it
+                    if (client_buffer.size() >= 4 + message_len) {
+
+                        // pop the length from the buffer
+                        client_buffer.erase(client_buffer.begin(), client_buffer.begin() + 4);
+
+                        // parse the message into a message struct
+                        protocol::Message msg = protocol::deserialize_message(message_len, client_buffer);
+
+                        // clear the message from the buffer
+                        client_buffer.erase(client_buffer.begin(), client_buffer.begin() + message_len);
+
+                        // handle the parsed message TODO: consider using a thread to handle this?
+                        handle_message(msg);
+
+                        // set the flag to true
+                        flag = true;
+                    }
+                } 
+            }
+            
+
+        }
+
+        return flag;
     }
 
 
