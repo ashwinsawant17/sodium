@@ -1,30 +1,77 @@
 #include "net/socket.hpp"
+#include "protocol/message.hpp"
+
+using namespace protocol;
+
+
 #include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <thread>
 
-#define BUFF_SIZE 128
+#define BUFF_SIZE 1024
 
-void listen_print(net::socket_t s, bool* should_continue) {
-    while (*should_continue) {
-        std::vector<uint8_t> buffer;
-        buffer.resize(BUFF_SIZE);
-        int bytes_read = 0;
-        bytes_read = net::receive(s, buffer.data(), buffer.size());
-
-        std::string str(buffer.begin(), buffer.end());
-
-        if (bytes_read > 0) {
-            std::cout << str;
-            std::cout << "\n";
-        }
+void handle_message(net::socket_t conn, protocol::Message msg) {
+    if (msg.type == protocol::MessageType::Chat) {
+        std::string output = deserialize_chat(msg);
+        std::cout << output << "\n";
     }
+}
+
+void listen_print(net::socket_t conn, bool* should_continue) {
+    std::vector<uint8_t> client_buffer;
+    uint8_t temp_buffer[BUFF_SIZE];
+    while (*should_continue) {
+
+            // read into the global buffer
+            int bytes_read = net::receive(conn, temp_buffer, BUFF_SIZE);
+
+
+            // if there's an issue reading, do nothing
+            // TODO: add appropriate handline if recv causes error, maybe break out of loop?
+            // TODO: also allow for multiple message parses before it re-loops
+            if (bytes_read != -1) {
+                // append global buffer data to the end of the client_buffer
+                client_buffer.insert(client_buffer.end(), temp_buffer, temp_buffer + bytes_read);
+
+                // if the size of the buffer is enough to read the length, read it and check if we can parse a message
+                if (client_buffer.size() >= 4) {
+
+                    // read the message length
+                    uint32_t message_len {0};
+                    message_len |= (client_buffer[0] << 24);
+                    message_len |= (client_buffer[1] << 16);
+                    message_len |= (client_buffer[2] << 8);
+                    message_len |= (client_buffer[3]);
+
+                    // ensure that length has proper endianness
+                    message_len = ntohl(message_len);
+
+                    // if we can read the entire message, parse and handle it
+                    if (client_buffer.size() >= 4 + message_len) {
+
+                        // pop the length from the buffer
+                        client_buffer.erase(client_buffer.begin(), client_buffer.begin() + 4);
+
+                        // parse the message into a message struct
+                        protocol::Message msg = protocol::deserialize_message(message_len, client_buffer);
+
+                        // clear the message from the buffer
+                        client_buffer.erase(client_buffer.begin(), client_buffer.begin() + message_len);
+
+                        // handle the parsed message TODO: consider using a thread to handle this?
+                        handle_message(conn, msg);
+
+                    }
+                } 
+            }
+            
+
+        }
 }
 
 int main(void) {
     net::init_sockets();
-    std::cout << "Hello from client.\n";
 
     // get the host:port from stdin
     std::string input;
@@ -58,23 +105,30 @@ int main(void) {
     std::cout << "Enter your username:\n";
     std::cin >> username;
 
+    // send an auth message
+    // TODO: probably need some sort of confirmation? maybe a new message type or a subset of a system message
+    std::vector<uint8_t> auth_message = serialize_message(
+        serialize_auth(username)
+    );
+
+    // TODO: check for how many bytes actually sent properly?
+    net::send_all(conn, auth_message.data(), auth_message.size());
+
+
+
     // for now, begin a read loop, and just send all the bytes to the server
     bool should_continue = true;
     std::thread receiver_thread(listen_print, conn, &should_continue); 
     do {
 
-        std::cin >> input;
-        std::string data = username + ": " + input;
-
+        std::getline(std::cin, input);
 
         if (input != "exit") {
-            std::cout << "Input received.\n";
             // TODO: add check for how many bytes are actually sent
-            net::send_all(
-                conn, 
-                reinterpret_cast<const uint8_t *>(data.c_str()), 
-                data.length()
+            std::vector<uint8_t> chat_message = serialize_message(
+                serialize_chat(input)
             );
+            net::send_all(conn, chat_message.data(), chat_message.size());
         }
     } while (input != "exit");
 

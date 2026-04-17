@@ -34,8 +34,39 @@ namespace net {
         cleanup_sockets();
     }
 
-    void Server::handle_message(protocol::Message msg) {
+    void Server::handle_message(socket_t conn, protocol::Message msg) {
         // TODO: add message handling
+        std::cout << "Handling message of type: " << static_cast<uint8_t>(msg.type) << "\n";
+
+        // if it's an authentication, add it to the username mapping
+        if (msg.type == protocol::MessageType::Auth) {
+            std::cout << "Processing Auth message\n";
+            std::string username = protocol::deserialize_auth(msg);
+            client_usernames[conn] = username;
+        } else if (msg.type == protocol::MessageType::Chat) {
+            std::string message = protocol::deserialize_chat(msg);
+            
+            // verify that the message sender has a username, otherwise don't do anything
+            if (client_usernames.contains(conn)) {
+                std::cout << "Sending message from: " << client_usernames[conn] << "\n";
+                // prepend the username to the message and broadcast to other clients
+                std::string username = client_usernames[conn];
+                std::string full_message = username + ": " + message;
+                std::cout << full_message << "\n";
+                // serialize chat message into payload
+                std::vector<uint8_t> payload = protocol::serialize_message(
+                    protocol::serialize_chat(full_message)
+                );
+
+                for (const auto& client: clients) {
+                    if (client != conn) {
+                        std::cout << "Sending message to: " << client_usernames[client] << "\n";
+                        net::send_all(client, payload.data(), payload.size());
+                    }
+                }
+
+            }
+        }
     }
 
 
@@ -49,11 +80,12 @@ namespace net {
     bool Server::buffered_read(socket_t conn, std::vector<uint8_t>& client_buffer) {
         bool flag = false;
         // while data is still readable from the socket...
-        while (errno != EAGAIN && errno != EWOULDBLOCK) {
+        do {
 
             // read into the global buffer
             int bytes_read = receive(conn, global_buffer, SERVER_BUFFER_SIZE);
 
+            std::cout << "Read: " << bytes_read << "\n";
 
             // if there's an issue reading, do nothing
             // TODO: add appropriate handline if recv causes error, maybe break out of loop?
@@ -66,14 +98,18 @@ namespace net {
 
                     // read the message length
                     uint32_t message_len {0};
-                    message_len &= (client_buffer[0] << 24);
-                    message_len &= (client_buffer[1] << 16);
-                    message_len &= (client_buffer[2] << 8);
-                    message_len &= (client_buffer[3]);
+                    message_len |= (client_buffer[0] << 24);
+                    message_len |= (client_buffer[1] << 16);
+                    message_len |= (client_buffer[2] << 8);
+                    message_len |= (client_buffer[3]);
+
+                    // ensure that length has proper endianness
+                    message_len = ntohl(message_len);
+                    std::cout << "Current length: " << message_len << "\n";
 
                     // if we can read the entire message, parse and handle it
                     if (client_buffer.size() >= 4 + message_len) {
-
+                        std::cout << "Received full message of length: " << message_len << "\n";
                         // pop the length from the buffer
                         client_buffer.erase(client_buffer.begin(), client_buffer.begin() + 4);
 
@@ -84,7 +120,7 @@ namespace net {
                         client_buffer.erase(client_buffer.begin(), client_buffer.begin() + message_len);
 
                         // handle the parsed message TODO: consider using a thread to handle this?
-                        handle_message(msg);
+                        handle_message(conn, msg);
 
                         // set the flag to true
                         flag = true;
@@ -93,8 +129,8 @@ namespace net {
             }
             
 
-        }
-
+        } while (errno != EAGAIN && errno != EWOULDBLOCK);
+        std::cout << "Exiting loop\n";
         return flag;
     }
 
@@ -144,38 +180,29 @@ namespace net {
                     epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn_sock, &ev);
 
                     // TODO: when registering new connection, you also need to generate a UID and send it
-                    std::cout << "Newly registered connection: " << conn_sock << "\n";
-                    auto [iter, success] = clients.insert(conn_sock);
-                    if (success) {
-                        std::cout << "Connection to " << conn_sock << " successful.\n";
-                    } else {
-                        std::cout << "Connection to " << conn_sock << " failed.\n";
-                    }
+                    // register the new connection with the Server's maps, sets, etc
+                    clients.insert(conn_sock);
+                    client_buffers[conn_sock] = std::vector<uint8_t>();
+
                 } else {
                     std::cout << "Received message from " << events[i].data.fd << "\n";
 
                     // TODO: for now, broadcast the message to all other 
                     socket_t sender_socket = events[i].data.fd;
 
-                    int bytes_read { 0 };
-                    std::vector<uint8_t> buffer;
-                    buffer.resize(BUFF_SIZE);
-
-                    bytes_read = receive(sender_socket, buffer.data(), BUFF_SIZE - 1);
+                    // peek to see if connection has closed
+                    uint8_t check_byte;
+                    int check_conn = recv(sender_socket, &check_byte, 1, MSG_PEEK);
                     
                     // bytes read was 0, the connection closed gracefully (or -1 if error, for now handle the same way)
                     // TODO: add separate handling for a gracefully closed connection vs an error
-                    if (bytes_read <= 0) {
+                    if (check_conn <= 0) {
                         close_socket(sender_socket);
                         clients.erase(sender_socket);
+                        client_buffers.erase(sender_socket);
+                        client_usernames.erase(sender_socket);
                     } else {
-                        std::string str(buffer.begin(), buffer.begin() + bytes_read);
-
-                        for (const auto& client: clients) {
-                            if (client != sender_socket) {
-                                send_all(client, (const uint8_t *) str.c_str(), str.length());
-                            }
-                        }
+                        buffered_read(sender_socket, client_buffers[sender_socket]);
                     }
                 }
             }

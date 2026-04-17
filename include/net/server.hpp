@@ -33,7 +33,7 @@ namespace net {
             Server(uint16_t port);
             ~Server();
 
-            void handle_message(protocol::Message msg);
+            void handle_message(socket_t conn, protocol::Message msg);
 
             // use the connection and buffer to correctly parse incoming bytes
             //

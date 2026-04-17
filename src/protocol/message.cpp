@@ -79,7 +79,7 @@ namespace protocol {
 
             // get the length of the chat message
             uint16_t chat_len = 0;
-            chat_len = (message.payload[0] << 8) & message.payload[1];
+            chat_len = (message.payload[0] << 8) | message.payload[1];
 
             // correct endianness of chat length
             chat_len = ntohs(chat_len);
@@ -103,8 +103,8 @@ namespace protocol {
         } else {
 
             // get the length of the chat message
-            uint16_t chat_len = 0;
-            chat_len = (message.payload[0] << 8) & message.payload[1];
+            uint16_t chat_len;
+            chat_len = (message.payload[0] << 8) | message.payload[1];
 
             // correct endianness of chat length
             chat_len = ntohs(chat_len);
@@ -134,17 +134,17 @@ namespace protocol {
 
         // output vector, reserve the size needed for the message
         std::vector<uint8_t> out;
-        out.reserve(sizeof(chat_len) + sizeof(message.type) + chat_len);
+        out.reserve(sizeof(chat_len) + chat_len);
+
+        // push the chat length
+        out.push_back((chat_len >> 24) & 0xFF);
+        out.push_back((chat_len >> 16) & 0xFF);
+        out.push_back((chat_len >> 8) & 0xFF);
+        out.push_back(chat_len & 0xFF);
+        
 
         // push the message type
         out.push_back(static_cast<uint8_t>(message.type));
-
-
-        // push the chat length
-        out.push_back(chat_len & 0xFF);
-        out.push_back((chat_len >> 8) & 0xFF);
-        out.push_back((chat_len >> 16) & 0xFF);
-        out.push_back((chat_len >> 24) & 0xFF);
 
         
         // append the payload
