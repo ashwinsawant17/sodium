@@ -35,20 +35,16 @@ namespace net {
     }
 
     void Server::handle_message(socket_t conn, protocol::Message msg) {
-        // TODO: add message handling
-        std::cout << "Handling message of type: " << static_cast<uint8_t>(msg.type) << "\n";
-
         // if it's an authentication, add it to the username mapping
         if (msg.type == protocol::MessageType::Auth) {
-            std::cout << "Processing Auth message\n";
-            std::string username = protocol::deserialize_auth(msg);
+			std::string username = protocol::deserialize_auth(msg);
             client_usernames[conn] = username;
         } else if (msg.type == protocol::MessageType::Chat) {
             std::string message = protocol::deserialize_chat(msg);
             
             // verify that the message sender has a username, otherwise don't do anything
             if (client_usernames.contains(conn)) {
-                std::cout << "Sending message from: " << client_usernames[conn] << "\n";
+                
                 // prepend the username to the message and broadcast to other clients
                 std::string username = client_usernames[conn];
                 std::string full_message = username + ": " + message;
@@ -60,7 +56,6 @@ namespace net {
 
                 for (const auto& client: clients) {
                     if (client != conn) {
-                        std::cout << "Sending message to: " << client_usernames[client] << "\n";
                         net::send_all(client, payload.data(), payload.size());
                     }
                 }
@@ -85,8 +80,6 @@ namespace net {
             // read into the global buffer
             int bytes_read = receive(conn, global_buffer, SERVER_BUFFER_SIZE);
 
-            std::cout << "Read: " << bytes_read << "\n";
-
             // if there's an issue reading, do nothing
             // TODO: add appropriate handline if recv causes error, maybe break out of loop?
             if (bytes_read != -1) {
@@ -105,11 +98,9 @@ namespace net {
 
                     // ensure that length has proper endianness
                     message_len = ntohl(message_len);
-                    std::cout << "Current length: " << message_len << "\n";
 
                     // if we can read the entire message, parse and handle it
                     if (client_buffer.size() >= 4 + message_len) {
-                        std::cout << "Received full message of length: " << message_len << "\n";
                         // pop the length from the buffer
                         client_buffer.erase(client_buffer.begin(), client_buffer.begin() + 4);
 
@@ -130,7 +121,7 @@ namespace net {
             
 
         } while (errno != EAGAIN && errno != EWOULDBLOCK);
-        std::cout << "Exiting loop\n";
+
         return flag;
     }
 
@@ -185,7 +176,6 @@ namespace net {
                     client_buffers[conn_sock] = std::vector<uint8_t>();
 
                 } else {
-                    std::cout << "Received message from " << events[i].data.fd << "\n";
 
                     // TODO: for now, broadcast the message to all other 
                     socket_t sender_socket = events[i].data.fd;
