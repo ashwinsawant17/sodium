@@ -23,11 +23,14 @@ namespace net {
 
             // client's mapping from uid's to usernames
             //
-            // we use an *ordered* map so that we can sort by the most recently message received
+            // we use an *ordered* map so that we caan sort by the most recently message received
             std::map<uid_t, std::string> username_map;
         
         public:
             Client(std::string host, std::string port, std::string username);
             ~Client();
+            void listen(bool *should_continue);
+            void handle_message(Message msg);
+            void parse_user_input(std::string line);
     };
 }

@@ -8,6 +8,7 @@ namespace protocol {
 
     // type for a user id
     using uid_t = uint32_t;
+    #define INVALID_UID 0
 
     // struct for a chat message, will define later protocol
     struct Direct_Message {
@@ -58,10 +59,10 @@ namespace protocol {
     Message serialize_auth(std::string username);
 
     // serialize a chat message into a Message Struct
-    Message serialize_chat(std::string chat_message);
+    Message serialize_chat(uid_t sender, uid_t receiver, std::string chat_message);
 
     // deserialize a Message Struct with type of Chat into a chat string
-    std::string deserialize_chat(Message message);
+    std::tuple<uid_t, uid_t, std::string> deserialize_chat(Message message);
 
     // deserialize a Message Struct with type of Chat into a chat string
     std::string deserialize_auth(Message message);

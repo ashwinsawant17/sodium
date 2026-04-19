@@ -120,7 +120,7 @@ namespace protocol {
         } else {
             uid_t uid = 0;
             for (size_t i = sizeof(uid); i > 0; i--) {
-                uid |= (msg.payload[i] & (0xFF << (8 * (i - 1))));
+                uid |= (msg.payload[sizeof(uid) - i] & (0xFF << (8 * (i - 1))));
             }
 
             std::string output(msg.payload.begin() + sizeof(uid_t), msg.payload.end());
@@ -155,7 +155,7 @@ namespace protocol {
     }
 
     // serialize a chat message into a Message Struct
-    Message serialize_chat(std::string chat_message) {
+    Message serialize_chat(uid_t sender, uid_t receiver, std::string chat_message) {
         
         // TODO: how to handle little vs big endian discrepancies?
         uint16_t chat_len = chat_message.length();
@@ -164,7 +164,15 @@ namespace protocol {
         chat_len = htons(chat_len);
 
         std::vector<uint8_t> out;
-        out.reserve(sizeof(chat_len) + chat_len);
+        out.reserve(2 * sizeof(uid_t) + sizeof(chat_len) + chat_len);
+
+        for (size_t i = sizeof(uid_t); i > 0; i--) {
+            out.push_back((sender >> (8 * (i - 1))) & 0xFF);
+        }
+
+        for (size_t i = sizeof(uid_t); i > 0; i--) {
+            out.push_back((receiver >> (8 * (i - 1))) & 0xFF);
+        }
 
         out.push_back((chat_len >> 8) & 0xFF);
         out.push_back((chat_len) & 0xFF);
@@ -179,27 +187,35 @@ namespace protocol {
     }
     
     // deserialize a Message Struct with type of Chat into a chat string
-    std::string deserialize_chat(Message message) {
+    std::tuple<uid_t, uid_t, std::string> deserialize_chat(Message message) {
         // validate the message type
         if (message.type != MessageType::Chat) {
             throw std::invalid_argument("Received Message with non Chat Type");
         
         // in the case of valid input, deserialize the payload
         } else {
+            uid_t sender = 0, receiver = 0;
+            for (size_t i = sizeof(uid_t); i > 0; i--) {
+                sender |= (message.payload[sizeof(uid_t) - i] & (0xFF << (8 * (i - 1))));
+            }
+
+            for (size_t i = sizeof(uid_t); i > 0; i--) {
+                receiver |= (message.payload[2 * sizeof(uid_t) - i] & (0xFF << (8 * (i - 1))));
+            }
 
             // get the length of the chat message
             uint16_t chat_len = 0;
-            chat_len = (message.payload[0] << 8) | message.payload[1];
+            chat_len = (message.payload[2 * sizeof(uid_t)] << 8) | message.payload[2 * sizeof(uid_t) + 1];
 
             // correct endianness of chat length
             chat_len = ntohs(chat_len);
 
             // lowkey not sure if I did this right, should i just use payload.end()?
-            std::string output(message.payload.begin() + 2, message.payload.begin() + 2 + chat_len);
+            std::string output(message.payload.begin() + 2 * sizeof(uid_t) + 2, message.payload.end());
             // TODO: why are we even encoding chat length if we encode overall payload length?
             // I guess it makes it more scalable in case we want to include more nested structures in the payload?
             
-            return output;
+            return std::tuple(sender, receiver, output);
         }
     }
 

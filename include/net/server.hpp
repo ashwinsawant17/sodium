@@ -27,6 +27,9 @@ namespace net {
             // map from connections to uids
             std::unordered_map<socket_t, uid_t> client_uids;
 
+            // map from uid to connection
+            std::unordered_map<uid_t, socket_t> uid_to_socket;
+
             // map from uid to username (username just for vanity)
             std::unordered_map<uid_t, std::string> client_usernames;
 

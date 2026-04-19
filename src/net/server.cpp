@@ -18,6 +18,8 @@ namespace net {
         // set port number
         port = port_number;
 
+        last_uid = 1;
+
         // initialize the server socket
         server_socket = net::create_tcp_socket();
 
@@ -37,29 +39,64 @@ namespace net {
     void Server::handle_message(socket_t conn, protocol::Message msg) {
         // if it's an authentication, add it to the username mapping
         if (msg.type == protocol::MessageType::Auth) {
+
+            // get the username
 			std::string username = protocol::deserialize_auth(msg);
-            client_usernames[conn] = username;
-        } else if (msg.type == protocol::MessageType::Chat) {
-            std::string message = protocol::deserialize_chat(msg);
             
-            // verify that the message sender has a username, otherwise don't do anything
-            if (client_usernames.contains(conn)) {
+            // generate a new uid
+            uid_t uid = gen_uid();
+
+            // update the mappings accordingly
+            client_uids[conn] = uid;
+            uid_to_socket[uid] = conn;
+            client_usernames[uid] = username;
+
+            // if a user has authorized, send the UID to the user
+            std::vector<uint8_t> user_info = protocol::serialize_message(
+                protocol::serialize_user_info(uid, username)
+            );
+            net::send_all(conn, user_info.data(), user_info.size());
+
+
+        } else if (msg.type == protocol::MessageType::Chat) {
+            auto [sender, receiver, message] = protocol::deserialize_chat(msg);
+            
+            // verify input and output uids
+            // TODO: actually verify username info as well
+            if (client_uids.contains(conn) && 
+                uid_to_socket.contains(sender) &&
+                client_uids[conn] == sender &&
+                uid_to_socket.contains(receiver)                
+            ) {
                 
-                // prepend the username to the message and broadcast to other clients
-                std::string username = client_usernames[conn];
-                std::string full_message = username + ": " + message;
-                std::cout << full_message << "\n";
-                // serialize chat message into payload
-                std::vector<uint8_t> payload = protocol::serialize_message(
-                    protocol::serialize_chat(full_message)
-                );
+                // get the appropriate receiver socket
+                socket_t receiver_socket = uid_to_socket[receiver];
 
-                for (const auto& client: clients) {
-                    if (client != conn) {
-                        net::send_all(client, payload.data(), payload.size());
-                    }
+                // reserialize message (IF ANY MODIFICATIONS NEED TO BE MADE, DO IT HERE)
+                std::vector<uint8_t> output = protocol::serialize_message(msg);
+
+                // pass along the message to the receiver socket
+                net::send_all(receiver_socket, output.data(), output.size());
+            }
+        } else if (msg.type == protocol::MessageType::REQ_USER_ID) {
+            // consider creating another map to get uids from username
+            std::string request_username = protocol::deserialize_req_user_id(msg);
+            for (const auto [uid, user] : client_usernames) {
+                if (user == request_username) {
+                    std::vector<uint8_t> output = protocol::serialize_message(
+                        protocol::serialize_user_info(uid, user)
+                    );
+                    net::send_all(conn, output.data(), output.size());
+                    break;
                 }
-
+            }
+        } else if (msg.type == protocol::MessageType::REQ_USERNAME) {
+            uid_t uid = protocol::deserialize_req_username(msg);
+            if (client_usernames.contains(uid)) {
+                std::vector<uint8_t> output = protocol::serialize_message(
+                    protocol::serialize_user_info(uid, client_usernames[uid])
+                );
+                net::send_all(conn, output.data(), output.size());
             }
         }
     }
