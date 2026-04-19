@@ -87,7 +87,7 @@ namespace net {
                 client_buffer.insert(client_buffer.end(), global_buffer, global_buffer + bytes_read);
 
                 // if the size of the buffer is enough to read the length, read it and check if we can parse a message
-                if (client_buffer.size() >= 4) {
+                while (client_buffer.size() >= 4) {
 
                     // read the message length
                     uint32_t message_len {0};
@@ -125,7 +125,10 @@ namespace net {
         return flag;
     }
 
-
+    // increments last_uid and returns the incremented value
+    uid_t Server::gen_uid() {
+        return ++last_uid;
+    }
 
     void Server::start() {
 

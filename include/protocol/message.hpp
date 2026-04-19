@@ -6,6 +6,15 @@
 
 namespace protocol {
 
+    // type for a user id
+    using uid_t = uint32_t;
+
+    // struct for a chat message, will define later protocol
+    struct Direct_Message {
+        uid_t sender;
+        uid_t receiver;
+        std::string chat;
+    };
 
     // Type of Message sent to server
     //
@@ -15,7 +24,10 @@ namespace protocol {
     enum class MessageType :  uint8_t {
         System = 1,
         Chat = 2,
-        Auth = 3
+        Auth = 3,
+        REQ_USER_ID = 4,
+        REQ_USERNAME = 5,
+        USER_INFO = 6
     };
 
     // Message Struct
@@ -23,6 +35,24 @@ namespace protocol {
         MessageType type;
         std::vector<uint8_t> payload;
     };
+
+    // serialize a request for a user id from a username
+    Message serialize_req_user_id(std::string username);
+
+    // deserialize a request for a user id from a username;
+    std::string deserialize_req_user_id(Message msg);
+
+    // serialize a request for a username from user id
+    Message serialize_req_username(uid_t uid);
+
+    // deserialize a request for a username from user id
+    uid_t deserialize_req_username(Message msg);
+
+    // serialize user info
+    Message serialize_user_info(uid_t uid, std::string username);
+
+    // deserialize user info
+    std::pair<uid_t, std::string> deserialize_user_info(Message msg);
 
     // serialize an auth message into a Message Struct
     Message serialize_auth(std::string username);

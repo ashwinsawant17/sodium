@@ -20,6 +20,116 @@ namespace protocol {
     // chat:
     // [length of message (2 bytes)][message (<length of message> bytes)]
     // for now, server will define the messages by the socket it comes in on
+
+    // serialize a request for a user id from a username
+    Message serialize_req_user_id(std::string username) {
+        // TODO: how to handle little vs big endian discrepancies?
+        uint16_t chat_len = username.length();
+
+        // use htons to transform into network endianness
+        chat_len = htons(chat_len);
+
+        std::vector<uint8_t> out;
+        out.reserve(sizeof(chat_len) + chat_len);
+
+        out.push_back((chat_len >> 8) & 0xFF);
+        out.push_back((chat_len) & 0xFF);
+
+        out.insert(out.end(), username.begin(), username.end());
+
+        MessageType type = MessageType::REQ_USER_ID;
+
+        Message output {type, out};
+
+        return output;
+    }
+
+    // deserialize a request for a user id from a username
+    std::string deserialize_req_user_id(Message msg) {
+        // validate the message type
+        if (msg.type != MessageType::REQ_USER_ID) {
+            throw std::invalid_argument("Received Message with non req_user_id Type");
+        
+        // in the case of valid input, deserialize the payload
+        } else {
+
+            // get the length of the chat message
+            uint16_t chat_len;
+            chat_len = (msg.payload[0] << 8) | msg.payload[1];
+
+            // correct endianness of chat length
+            chat_len = ntohs(chat_len);
+
+            // lowkey not sure if I did this right, should i just use payload.end()?
+            std::string output(msg.payload.begin() + 2, msg.payload.begin() + 2 + chat_len);
+            // TODO: why are we even encoding chat length if we encode overall payload length?
+            // I guess it makes it more scalable in case we want to include more nested structures in the payload?
+            
+            return output;
+        }
+    }
+
+    // serialize a request for a username from user id
+    Message serialize_req_username(uid_t uid) {
+        std::vector<uint8_t> out;
+        out.reserve(sizeof(uid));
+
+        for (size_t i = sizeof(uid); i > 0; i--) {
+            out.push_back((uid >> (8 * (i - 1))) & 0xFF);
+        }
+
+        return Message{MessageType::REQ_USERNAME, out};
+    }
+
+    // deserialize a request for a username from user id
+    uid_t deserialize_req_username(Message msg) {
+        if (msg.type != MessageType::REQ_USERNAME) {
+            throw std::invalid_argument("Received Message with non req_username Type");
+        
+        // in the case of valid input, deserialize the payload
+        } else {
+            uid_t uid = 0;
+            for (size_t i = sizeof(uid); i > 0; i--) {
+                uid |= (msg.payload[i] & (0xFF << (8 * (i - 1))));
+            }
+
+            return uid;
+        }
+    }
+
+    // serialize user info (does not encode string length)
+    Message serialize_user_info(uid_t uid, std::string username) {
+        std::vector<uint8_t> out;
+        out.reserve(sizeof(uid) + username.length());
+
+        for (size_t i = sizeof(uid); i > 0; i--) {
+            out.push_back((uid >> (8 * (i - 1))) & 0xFF);
+        }
+
+        out.insert(out.end(), username.begin(), username.end());
+    
+        return Message{MessageType::USER_INFO, out};
+    }
+
+    // deserialize user info
+    std::pair<uid_t, std::string> deserialize_user_info(Message msg) {
+        if (msg.type != MessageType::REQ_USERNAME) {
+            throw std::invalid_argument("Received Message with non user_info Type");
+        
+        // in the case of valid input, deserialize the payload
+        } else {
+            uid_t uid = 0;
+            for (size_t i = sizeof(uid); i > 0; i--) {
+                uid |= (msg.payload[i] & (0xFF << (8 * (i - 1))));
+            }
+
+            std::string output(msg.payload.begin() + sizeof(uid_t), msg.payload.end());
+
+            return std::pair(uid, output);
+        }
+    }
+
+
     
     // serialize an auth message into a Message Struct
     Message serialize_auth(std::string username) {
