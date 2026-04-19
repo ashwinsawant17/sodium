@@ -42,7 +42,7 @@ namespace net {
     void Client::handle_message(Message msg) {
         if (msg.type == MessageType::USER_INFO) {
             auto [recv_uid, recv_user] = deserialize_user_info(msg);
-            
+            std::cout << recv_uid << ": " << recv_user << "\n";
             // if uid is set to the `INVALID_UID` we assume that this is the first "request for user info"
             // which means that this is THIS client's UID
             // TODO: probably add better handling, or a separate handler to get the current client's uid
@@ -119,7 +119,9 @@ namespace net {
     }
 
     void Client::parse_user_input(std::string line) {
-        std::stringstream ss(line);
-        
+        std::vector<uint8_t> payload = serialize_message(
+            serialize_req_user_id(line)
+        );
+        net::send_all(server_conn, payload.data(), payload.size());
     }
 }

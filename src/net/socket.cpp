@@ -1,6 +1,7 @@
 #include "net/socket.hpp"
 #include <iostream>
 #include <cstring>
+#include <sys/socket.h>
 
 namespace net {
 
@@ -52,6 +53,9 @@ namespace net {
         addr.sin_addr.s_addr = INADDR_ANY;
         addr.sin_port = htons(port);
 
+        int opt = 1;
+        setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+        
         return ::bind(s, (sockaddr *) &addr, sizeof(addr)) == 0;
     }
 

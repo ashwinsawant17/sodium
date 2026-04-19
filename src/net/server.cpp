@@ -45,7 +45,7 @@ namespace net {
             
             // generate a new uid
             uid_t uid = gen_uid();
-
+            std::cout << "Received auth: " << username << "->" << uid << "\n";
             // update the mappings accordingly
             client_uids[conn] = uid;
             uid_to_socket[uid] = conn;
@@ -81,8 +81,10 @@ namespace net {
         } else if (msg.type == protocol::MessageType::REQ_USER_ID) {
             // consider creating another map to get uids from username
             std::string request_username = protocol::deserialize_req_user_id(msg);
+            std::cout << "Received req_user_id: " << request_username << "\n";
             for (const auto [uid, user] : client_usernames) {
                 if (user == request_username) {
+                    std::cout << "Received req_user_id: " << user << "->" << uid << "\n";
                     std::vector<uint8_t> output = protocol::serialize_message(
                         protocol::serialize_user_info(uid, user)
                     );

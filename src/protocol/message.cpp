@@ -113,7 +113,7 @@ namespace protocol {
 
     // deserialize user info
     std::pair<uid_t, std::string> deserialize_user_info(Message msg) {
-        if (msg.type != MessageType::REQ_USERNAME) {
+        if (msg.type != MessageType::USER_INFO) {
             throw std::invalid_argument("Received Message with non user_info Type");
         
         // in the case of valid input, deserialize the payload
