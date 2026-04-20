@@ -1,6 +1,7 @@
 #include "protocol/message.hpp"
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #ifdef _WIN32
 #include <winsock2.h>
 #else
@@ -215,7 +216,7 @@ namespace protocol {
             // TODO: why are we even encoding chat length if we encode overall payload length?
             // I guess it makes it more scalable in case we want to include more nested structures in the payload?
             
-            return std::tuple(sender, receiver, output);
+            return std::tuple<uid_t, uid_t, std::string>(sender, receiver, output);
         }
     }
 
