@@ -5,7 +5,7 @@ endif()
 
 
 # Add the target executable for the sodium-client
-add_executable(sodium-client client.cpp client-main.cpp)
+add_executable(sodium-client client.cpp appstate.cpp client-main.cpp)
 
 # Link against the core libraries
 target_link_libraries(sodium-client PRIVATE core)
