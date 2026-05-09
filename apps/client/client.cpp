@@ -1,4 +1,4 @@
-#include "net/client.hpp"
+#include "client/client.hpp"
 #include "net/socket.hpp"
 #include "protocol/message.hpp"
 
