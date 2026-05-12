@@ -50,6 +50,9 @@ int main(void) {
 
 	// fill it up with some temp data 
 	put_temp_data(app, 32);
+
+	// do an initial render
+	app.update_screen = true;
 	
 	// render loop
 	while (true) {
@@ -75,6 +78,13 @@ int main(void) {
 		
 		if (ch == 27) {
 			break;
+		} else if (ch == KEY_RESIZE) {
+			std::cerr << "Resizing\n";
+			clear();
+			int height, width;
+			getmaxyx(stdscr, height, width);
+			std::tie(app.contacts, app.chat_history, app.chat_in) = init_parent_windows(height, width);
+			app.update_screen = true;
 		} else if (ch == '\t'){
 			cycle_focus(app, true);
 		} else if (ch == KEY_BTAB) {

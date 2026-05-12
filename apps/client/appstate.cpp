@@ -224,7 +224,7 @@ void render_input(AppState &app) {
 	}
 
 	// get the y pos of the text input, centered in window
-	int y_pos = height / 2;
+	int y_pos = (height / 2) + (height % 2) - 1;
 
 	// the idea is we decide where in the chat window we want the cursor
 	// then we draw everything before the cursor, cutting off the prefix that wouldn't fit 
