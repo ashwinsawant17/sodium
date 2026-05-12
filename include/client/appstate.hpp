@@ -69,12 +69,16 @@ typedef struct _app_state {
     int highlighted_user = 0;
     // dimensions of contacts window
     int h_contacts, w_contacts;
+    // determine necessity to update contacts
+    bool update_contacts = false;
 
     // chat history window: 
     // how far up we've scrolled in the selected chat history
     uint32_t history_scroll = 0;
     // dimensions of history window
     int h_history, w_history;
+    // determine necessity to update chat history
+    bool update_history = false;
     
     // chat input window: 
     // ofset to start drawing text
@@ -87,6 +91,8 @@ typedef struct _app_state {
     std::string post_input_buffer;
     // dimensions of input window
     int h_input, w_input;
+    // determine necessity to update chat input
+    bool update_input = false;
 
     
     // asynchronous event management
@@ -94,6 +100,9 @@ typedef struct _app_state {
     std::queue<Event> e_queue;
     // mutex for thread safe access to event queue
     std::mutex lock;
+
+    // determine necessity to update entire screen
+    bool update_screen = false;
 
 } AppState;
 

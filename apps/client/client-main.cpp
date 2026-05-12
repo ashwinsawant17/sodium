@@ -15,7 +15,6 @@ using namespace net;
 #include <queue>
 #include <mutex>
 #include <curses.h>
-#include <format>
 #include <list>
 
 
@@ -30,7 +29,7 @@ void simulate_listener(int num_users, std::queue<Event> &queue, std::mutex &lock
 		// sleep for the designated timeout
 		std::this_thread::sleep_for(std::chrono::milliseconds(TIMEOUT_MS));
 		// choose a random uid_to_username
-		std::string msg = std::format("message {}", latest_msg);
+		std::string msg = "message " + std::to_string(latest_msg);
 		latest_msg++;
 		Event e = {EventType::INC_MSG, last_user, msg};
 		last_user++;
@@ -55,9 +54,12 @@ int main(void) {
 	// render loop
 	while (true) {
 		
-		render_contacts(app);
-		render_history(app);
-		render_input(app);
+		if (app.update_screen) {
+			render_contacts(app);
+			render_history(app);
+			render_input(app);
+			app.update_screen = false;
+		}
 
 		int ch = getch();
 
@@ -67,7 +69,11 @@ int main(void) {
 			// however, i'm not sure if we should also just skip this loop instead of skipping this iteration
 			// for now, solve it by forcing any other processing that should happen regardless of character input to happen before the check
 			continue;	
-		} else if (ch == 27) {
+		} else {
+			app.update_screen = true;
+		}
+		
+		if (ch == 27) {
 			break;
 		} else if (ch == '\t'){
 			cycle_focus(app, true);
@@ -78,6 +84,8 @@ int main(void) {
 		// character input for specific windows
 		// if the focus is currently on CONTACTS
 		else if (app.focus == WindowFocus::CONTACTS){
+			// first determine if w
+
 			if (ch == KEY_UP) {
 				app.highlighted_user--;
 				if (app.highlighted_user < 0) {
