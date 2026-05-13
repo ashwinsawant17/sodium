@@ -13,6 +13,8 @@ target_link_libraries(sodium-client PRIVATE core)
 # Link against necessary external libraries
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(sodium-client PRIVATE ws2_32)
+	target_include_directories(sodium-client PRIVATE ${PROJECT_SOURCE_DIR}/include/windows)
+	target_link_libraries(sodium-client PRIVATE ${PROJECT_SOURCE_DIR}/lib/pdcurses.a)
 endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
