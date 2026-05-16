@@ -7,7 +7,15 @@
 #include <unordered_map>
 
 #include <cstdint>
+#ifdef _WIN32
+#include "windows/curses.h"
+#else
 #include <curses.h>
+#endif
+
+#include "protocol/message.hpp"
+
+using namespace protocol;
 
 // type of event on the async event queue
 enum class EventType {

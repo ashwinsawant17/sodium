@@ -1,4 +1,14 @@
 Initialized client
 Initialized appstate
-Attempting to add contact: kateAdded uid: 15, user: kate
-User kate added to appstate
+Attempting to map uid: 3 to: windows_ash
+Setting own uid to: 3
+UID NOW: 3
+Attempting to add contact: ashwinAttempting to map uid: 5 to: ashwin
+Added uid: 5, user: 5_ashwin
+User 5_ashwin added to appstate
+Attempting to add contact: kateAttempting to map uid: 4 to: kate
+Added uid: 4, user: 4_kate
+User 4_kate added to appstate
+Received message from uid: 4
+Attempting to send message to uid: 5 from 3
+Received message from uid: 5

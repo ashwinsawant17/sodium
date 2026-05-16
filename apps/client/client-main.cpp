@@ -14,7 +14,11 @@ using namespace net;
 #include <tuple>
 #include <queue>
 #include <mutex>
+#ifdef _WIN32
+#include "windows/curses.h"
+#else
 #include <curses.h>
+#endif
 #include <list>
 
 

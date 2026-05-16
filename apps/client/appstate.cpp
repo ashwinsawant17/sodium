@@ -1,10 +1,17 @@
 #include "client/appstate.hpp"
+#ifdef _WIN32
+#include "windows/curses.h"
+#else
 #include <curses.h>
+#endif
 #include <vector>
 #include <algorithm>
 
 #include <iostream>
 #include <string>
+
+using namespace protocol;
+
 
 // push an event onto the event queue
 void push_event(Event event, std::queue<Event> &queue, std::mutex &lock) {
