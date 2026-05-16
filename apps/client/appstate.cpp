@@ -1,5 +1,6 @@
 #include "client/appstate.hpp"
 #include <curses.h>
+#include <vector>
 
 // push an event onto the event queue
 void push_event(Event event, std::queue<Event> &queue, std::mutex &lock) {
@@ -156,7 +157,7 @@ void put_temp_data(AppState &app, unsigned int num_users) {
 void render_contacts(AppState &app) {
 
 	WINDOW *win = app.contacts;
-	std::list<uid_t> contacts = app.uids;
+	std::vector<uid_t> contacts = app.uids;
 	std::unordered_map<uid_t, std::string> username_map = app.uid_to_username;
 	int selected_user = app.selected_user;
 	int highlighted_user = app.highlighted_user;
@@ -187,7 +188,7 @@ void render_contacts(AppState &app) {
 	int num_lines = (height - v_offset) / rows_per_line;
 
 	// get an iterator for the list of contacts 
-	std::list<uid_t>::iterator iter = contacts.begin();
+	std::vector<uid_t>::iterator iter = contacts.begin();
 	// account for scroll
 	for (unsigned int i = 0; i < sidebar_scroll; i++) {
 		if (iter != contacts.end()) {
@@ -313,6 +314,56 @@ void render_history(AppState &app) {
 		box(win, ACS_BLOCK, ACS_BLOCK);
 	} else {
 		box(win, 0, 0);
+	}
+
+	// determine the width/offset the message will be rendered in
+	// TODO: for now, just set it to app.text_offset on both ends
+	// use the mvwaddnstr to actually render 
+	int message_width = app.w_history - (2 * app.text_offset);
+
+	// get the active uid_t and username 
+	uid_t user = app.uids[app.selected_user];
+	std::string username = app.uid_to_username[user];
+
+	// get the chat history 
+	std::vector<std::pair<bool, std::string>> msgs_vec = app.chat_histories[user];
+
+	// TODO: add functionality for history scrolling
+	// start at the bottom of the window and render upward
+	int line_no = app.h_history - 2;
+	
+	// begin iterating through each message 
+	for (int i = msgs_vec.size() - 1; i >= 0 && line_no >= 2; i--) {
+		// calculate the actual window view of this string
+		// for now, naively make a bunch of copies
+		// TODO: use pointer arithmetic or string views to avoid unnecessary copies 
+		std::string from_username = (msgs_vec[i].first)? "You" : username;
+		std::vector<std::string> msg_lines;
+		std::string whole_message = msgs_vec[i].second;
+		int str_len = whole_message.size();
+		int start = 0;
+		while (str_len > 0) {
+			// compute the substring
+			msg_lines.push_back(whole_message.substr(start, message_width));
+			str_len -= message_width;
+			start += message_width;
+		}
+
+		// now that we've split it up into appropriate lines, render them bottom up 
+		for (int j = msg_lines.size() - 1; j >= 0 && line_no >= 2; j--) {
+			mvwaddstr(app.chat_history, line_no, app.text_offset, msg_lines[j].c_str());
+			line_no--;
+		}
+
+		// print the username TODO: apparently wattron is legacy? i think it should be fine 
+		if (line_no >= 2) {
+			wattron(app.chat_history, A_STANDOUT);
+			mvwaddstr(app.chat_history, line_no, app.text_offset, from_username.c_str());
+			wattroff(app.chat_history, A_STANDOUT);
+			line_no--;
+		}
+		
+
 	}
 
 	wrefresh(win);

@@ -142,7 +142,7 @@ int main(void) {
 				// construct the total string buffer
 				std::string msg = app.pre_input_buffer + app.post_input_buffer;
 				// add the message to the vector of strings for the selected user 
-				app.chat_histories[app.selected_user].push_back({true, msg});
+				app.chat_histories[app.uids[app.selected_user]].push_back({true, msg});
 				// clean the buffer and reset the cursor
 				app.pre_input_buffer.clear();
 				app.post_input_buffer.clear();

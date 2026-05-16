@@ -47,7 +47,7 @@ typedef struct _app_state {
 
     // user management
     // known contacts 
-    std::list<uid_t> uids;
+    std::vector<uid_t> uids;
 
     // mapping from uids to usernames
     std::unordered_map<uid_t, std::string> uid_to_username;
