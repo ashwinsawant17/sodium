@@ -1,0 +1,9 @@
+Initialized client
+Initialized appstate
+Attempting to map uid: 2 to: ashwin
+Setting own uid to: 2
+UID NOW: 2
+Attempting to add contact: kateAttempting to map uid: 3 to: kate
+Added uid: 3, user: 3_kate
+User 3_kate added to appstate
+Attempting to send message to uid: 3 from 2

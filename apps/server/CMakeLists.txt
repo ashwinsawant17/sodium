@@ -1,5 +1,5 @@
 # Add the target executable for the sodium-client
-add_executable(sodium-server server-main.cpp)
+add_executable(sodium-server server.cpp server-main.cpp)
 
 # Link against the core libraries
 target_link_libraries(sodium-server PRIVATE core)

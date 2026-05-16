@@ -1,6 +1,7 @@
 #pragma once
 #include "net/socket.hpp"
 #include "protocol/message.hpp"
+#include "client/appstate.hpp"
 
 #include <stdexcept>
 #include <unordered_set>
@@ -30,8 +31,8 @@ namespace net {
         
             Client(std::string host, std::string port, std::string username);
             ~Client();
-            void listen(bool *should_continue);
-            void handle_message(Message msg);
-            void parse_user_input(std::string line);
+            void listen(bool *should_continue, std::queue<Event> &e_queue, std::mutex &lock);
+            void handle_message(Message msg, std::queue<Event> &e_queue, std::mutex &lock);
+            void parse_user_input(std::string line, AppState &app);
     };
 }

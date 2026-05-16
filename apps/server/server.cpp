@@ -60,7 +60,7 @@ namespace net {
 
         } else if (msg.type == protocol::MessageType::Chat) {
             auto [sender, receiver, message] = protocol::deserialize_chat(msg);
-            
+            std::cerr << "Attempting to send message from (" << sender << ", " << client_usernames[sender] << ") to (" << receiver << ", " << client_usernames[receiver] << ")\n";
             // verify input and output uids
             // TODO: actually verify username info as well
             if (client_uids.contains(conn) && 
@@ -81,7 +81,7 @@ namespace net {
         } else if (msg.type == protocol::MessageType::REQ_USER_ID) {
             // consider creating another map to get uids from username
             std::string request_username = protocol::deserialize_req_user_id(msg);
-            std::cout << "Received req_user_id: " << request_username << "\n";
+            std::cout << "Received req_aaaauser_id: " << request_username << "\n";
             for (const auto [uid, user] : client_usernames) {
                 if (user == request_username) {
                     std::cout << "Received req_user_id: " << user << "->" << uid << "\n";

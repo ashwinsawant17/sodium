@@ -1,0 +1,4 @@
+Initialized client
+Initialized appstate
+Attempting to add contact: kateAdded uid: 15, user: kate
+User kate added to appstate

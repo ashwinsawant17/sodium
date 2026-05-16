@@ -21,7 +21,7 @@ using namespace net;
 #define BUFF_SIZE 1024
 
 void simulate_listener(int num_users, std::queue<Event> &queue, std::mutex &lock, bool *should_continue) {
-	const unsigned int TIMEOUT_MS = 1000;
+	const unsigned int TIMEOUT_MS = 2000;
 	unsigned int latest_msg = 0;
 	uid_t last_user = 0;
 
@@ -32,6 +32,9 @@ void simulate_listener(int num_users, std::queue<Event> &queue, std::mutex &lock
 		std::string msg = "message " + std::to_string(latest_msg);
 		latest_msg++;
 		Event e = {EventType::INC_MSG, last_user, msg};
+		lock.lock();
+		queue.push(e);
+		lock.unlock();
 		last_user++;
 		if (last_user >= num_users) {
 			last_user = 0;
@@ -40,16 +43,45 @@ void simulate_listener(int num_users, std::queue<Event> &queue, std::mutex &lock
 }
 
 
-int main(void) {
 
-	
+int main(int argc, const char* argv[]) {
+
+	std::string host, port, username;
+
+	// validate that we have the right number of arguments
+	if (argc < 3) {
+		std::cerr << "Not enough arguments.\n";
+	} else {
+		// get the host:port
+		std::string input(argv[1]); 
+		size_t pos = input.find(":");
+
+		if (pos == std::string::npos) {
+			throw std::runtime_error("Invalid format for host:port.\n");
+		}
+
+		// separate the host from the port
+		host = input.substr(0, pos);
+		port = input.substr(pos + 1);
+
+		username = std::string(argv[2]);
+	}
+
+	// initialize the client 
+	Client client = Client(host, port, username);
+	std::cerr << "Initialized client\n";
+
+
 	// initialize the appstate
 	AppState app = init_appstate();
+	std::cerr << "Initialized appstate\n";
 
-	int num_users = 32;
 
-	// fill it up with some temp data 
-	put_temp_data(app, 32);
+	bool should_continue = true;
+
+	// start listener thread 
+	std::thread listener_thread(&Client::listen, &client, &should_continue, 
+		std::ref(app.e_queue), std::ref(app.lock));
 
 	// do an initial render
 	app.update_screen = true;
@@ -57,7 +89,19 @@ int main(void) {
 	
 	// render loop
 	while (true) {
+
+		// process all the events
+		// TODO: maybe wrap this in a safer interface?
+		std::vector<Event> curr_events = drain_queue(app.e_queue, app.lock);
 		
+		// parse the events 
+		parse_events(app, curr_events);
+
+		// if the events queue was non-empty, we may need to update the screen 
+		if (!curr_events.empty()) {
+			app.update_screen = true;
+		}
+
 		if (app.update_screen) {
 			render_contacts(app);
 			render_history(app);
@@ -78,6 +122,7 @@ int main(void) {
 		}
 		
 		if (ch == 27) {
+			should_continue = false;
 			break;
 		} else if (ch == KEY_RESIZE) {
 			int height, width;
@@ -97,15 +142,16 @@ int main(void) {
 			if (ch == KEY_UP) {
 				app.highlighted_user--;
 				if (app.highlighted_user < 0) {
-					app.highlighted_user = num_users - 1;
+					app.highlighted_user = app.uids.size() - 1;
 				}
 			} else if (ch == KEY_DOWN) {
 				app.highlighted_user++;
-				if (app.highlighted_user >= num_users) {
+				if (app.highlighted_user >= app.uids.size()) {
 					app.highlighted_user = 0;
 				}
 			} else if (ch == 13) {
 				app.selected_user = app.highlighted_user;
+				app.chats_read[app.uids[app.selected_user]] = true;
 			}
 		
 		// if the focus is currently on chat input
@@ -141,12 +187,19 @@ int main(void) {
 			} else if (ch == 13) {
 				// construct the total string buffer
 				std::string msg = app.pre_input_buffer + app.post_input_buffer;
-				// add the message to the vector of strings for the selected user 
-				app.chat_histories[app.uids[app.selected_user]].push_back({true, msg});
+				// check if the selected user is valid 
+				if (app.selected_user < app.uids.size()) {
+					// add the message to the vector of strings for the selected user 
+					app.chat_histories[app.uids[app.selected_user]].push_back({true, msg});
+				}
+
+				// have the client send the message to the appropriate user 
+				client.parse_user_input(msg, app);
+
 				// clean the buffer and reset the cursor
 				app.pre_input_buffer.clear();
 				app.post_input_buffer.clear();
-				app.cursor_pos = 0;
+				app.cursor_pos = 0;	
 			} else if (ch == KEY_BACKSPACE) {
 				// similar to KEY_LEFT, check if there's space to the left of the cursor
 				if (app.pre_input_buffer.size() > 0) {
@@ -172,46 +225,10 @@ int main(void) {
 	}
 	// cleanup the tui 
 	cleanup_tui();
-	
 
-	//std::cout << height << ", " << width << "\n";
-	
-    // get the host:port from stdin
-    std::string input;
-    std::cout << "Enter the HOST:PORT\n";
-    std::getline(std::cin, input);
+	// end the thread
+	listener_thread.join();
 
-    size_t pos = input.find(":");
-
-    if (pos == std::string::npos) {
-        throw std::runtime_error("Invalid format for host:port.\n");
-    }
-
-    // separate the host from the port
-    std::string host = input.substr(0, pos);
-    std::string port = input.substr(pos + 1);
-
-    std::string username;
-    std::cout << "Enter your username:\n";
-    std::getline(std::cin, username);
-
-    Client client = Client(host, port, username);
-
-    // for now, begin a read loop, and just send all the bytes to the server
-    bool should_continue = true;
-    std::thread receiver_thread(&Client::listen, &client, &should_continue); 
-    do {
-
-        std::getline(std::cin, input);
-
-        if (input != "/exit") {
-            // TODO: add check for how many bytes are actually sent
-            client.parse_user_input(input);
-        }
-    } while (input != "/exit");
-
-    should_continue = false;
-    receiver_thread.join();
     net::cleanup_sockets();
 
     return 0;

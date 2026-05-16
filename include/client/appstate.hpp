@@ -7,7 +7,6 @@
 #include <unordered_map>
 
 #include <cstdint>
-#include "client/client.hpp"
 #include <curses.h>
 
 // type of event on the async event queue
@@ -48,6 +47,9 @@ typedef struct _app_state {
     // user management
     // known contacts 
     std::vector<uid_t> uids;
+
+    // mapping of uids to a boolean: true if messages have been read, false if there are unreads 
+    std::unordered_map<uid_t, bool> chats_read;
 
     // mapping from uids to usernames
     std::unordered_map<uid_t, std::string> uid_to_username;
@@ -103,6 +105,7 @@ typedef struct _app_state {
     std::queue<Event> e_queue;
     // mutex for thread safe access to event queue
     std::mutex lock;
+    
 
     // determine necessity to update entire screen
     bool update_screen = false;
@@ -132,7 +135,7 @@ std::tuple<WINDOW *, WINDOW *, WINDOW *> init_parent_windows(int height, int wid
 void resize_screen(AppState &app, int height, int width);
 
 // initialize an empty appstate
-AppState init_appstate();
+AppState init_appstate(void);
 
 // generate some filler data 
 void put_temp_data(AppState &app, unsigned int num_users);
@@ -145,3 +148,6 @@ void render_input(AppState &app);
 
 // render the chat history
 void render_history(AppState &app);
+
+// parse all the events in a vector
+void parse_events(AppState &app, std::vector<Event> events);

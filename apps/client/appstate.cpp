@@ -1,6 +1,10 @@
 #include "client/appstate.hpp"
 #include <curses.h>
 #include <vector>
+#include <algorithm>
+
+#include <iostream>
+#include <string>
 
 // push an event onto the event queue
 void push_event(Event event, std::queue<Event> &queue, std::mutex &lock) {
@@ -127,6 +131,7 @@ AppState init_appstate() {
 	int h_input, w_input;
 	getmaxyx(chat_in, h_input, w_input);
 
+
 	return {
 		.usr_w_prop = usr_w_prop,
 		.in_h_prop = in_h_prop,
@@ -150,6 +155,7 @@ void put_temp_data(AppState &app, unsigned int num_users) {
 		app.uid_to_username[i] = username;
 		app.username_to_uid[username] = i;
 		app.chat_histories[i];
+		app.chats_read[i] = true;
 	}
 }
 
@@ -175,7 +181,10 @@ void render_contacts(AppState &app) {
 
 	// redraw the box based on whether or not it's in focus
 	if (focus == WindowFocus::CONTACTS) {
-		box(win, ACS_BLOCK, ACS_BLOCK);
+		wborder(win, ACS_BLOCK, ACS_BLOCK,
+			ACS_BLOCK, ACS_BLOCK,
+			ACS_BLOCK, ACS_BLOCK,
+			ACS_BLOCK, ACS_BLOCK);
 	} else {
 		box(win, 0, 0);
 	}
@@ -213,6 +222,14 @@ void render_contacts(AppState &app) {
 			uid_t uid = *iter;
 			iter++;
 			line = username_map[uid];
+
+			if (app.chats_read[uid]) {
+				line = " " + line + "   ";
+			} else {
+				std::string s = "  ";
+				s.push_back(ACS_BULLET);
+				line = " " + line + s;
+			}
 		}
 		// if this is the selected user, highlight it
 		if ((i - 1) == selected_user) {
@@ -254,7 +271,10 @@ void render_input(AppState &app) {
 
 	// redraw the box based on whether or not it's in focus
 	if (app.focus == WindowFocus::CHAT_IN) {
-		box(win, ACS_BLOCK, ACS_BLOCK);
+		wborder(win, ACS_BLOCK, ACS_BLOCK,
+			ACS_BLOCK, ACS_BLOCK,
+			ACS_BLOCK, ACS_BLOCK,
+			ACS_BLOCK, ACS_BLOCK);
 	} else {
 		box(win, 0, 0);
 	}
@@ -311,7 +331,10 @@ void render_history(AppState &app) {
 
 	// redraw the box based on whether or not it's in focus
 	if (app.focus == WindowFocus::CHAT_HIST) {
-		box(win, ACS_BLOCK, ACS_BLOCK);
+		wborder(win, ACS_BLOCK, ACS_BLOCK,
+			ACS_BLOCK, ACS_BLOCK,
+			ACS_BLOCK, ACS_BLOCK,
+			ACS_BLOCK, ACS_BLOCK);
 	} else {
 		box(win, 0, 0);
 	}
@@ -321,49 +344,53 @@ void render_history(AppState &app) {
 	// use the mvwaddnstr to actually render 
 	int message_width = app.w_history - (2 * app.text_offset);
 
-	// get the active uid_t and username 
-	uid_t user = app.uids[app.selected_user];
-	std::string username = app.uid_to_username[user];
+	// check if we even have an active user to choose (check if selected_user index is greater than length of users)
+	if (app.selected_user < app.uids.size()) {
 
-	// get the chat history 
-	std::vector<std::pair<bool, std::string>> msgs_vec = app.chat_histories[user];
+		// get the active uid_t and username 
+		uid_t user = app.uids[app.selected_user];
+		std::string username = app.uid_to_username[user];
 
-	// TODO: add functionality for history scrolling
-	// start at the bottom of the window and render upward
-	int line_no = app.h_history - 2;
-	
-	// begin iterating through each message 
-	for (int i = msgs_vec.size() - 1; i >= 0 && line_no >= 2; i--) {
-		// calculate the actual window view of this string
-		// for now, naively make a bunch of copies
-		// TODO: use pointer arithmetic or string views to avoid unnecessary copies 
-		std::string from_username = (msgs_vec[i].first)? "You" : username;
-		std::vector<std::string> msg_lines;
-		std::string whole_message = msgs_vec[i].second;
-		int str_len = whole_message.size();
-		int start = 0;
-		while (str_len > 0) {
-			// compute the substring
-			msg_lines.push_back(whole_message.substr(start, message_width));
-			str_len -= message_width;
-			start += message_width;
-		}
+		// get the chat history 
+		std::vector<std::pair<bool, std::string>> msgs_vec = app.chat_histories[user];
 
-		// now that we've split it up into appropriate lines, render them bottom up 
-		for (int j = msg_lines.size() - 1; j >= 0 && line_no >= 2; j--) {
-			mvwaddstr(app.chat_history, line_no, app.text_offset, msg_lines[j].c_str());
-			line_no--;
-		}
-
-		// print the username TODO: apparently wattron is legacy? i think it should be fine 
-		if (line_no >= 2) {
-			wattron(app.chat_history, A_STANDOUT);
-			mvwaddstr(app.chat_history, line_no, app.text_offset, from_username.c_str());
-			wattroff(app.chat_history, A_STANDOUT);
-			line_no--;
-		}
+		// TODO: add functionality for history scrolling
+		// start at the bottom of the window and render upward
+		int line_no = app.h_history - 2;
 		
+		// begin iterating through each message 
+		for (int i = msgs_vec.size() - 1; i >= 0 && line_no >= 2; i--) {
+			// calculate the actual window view of this string
+			// for now, naively make a bunch of copies
+			// TODO: use pointer arithmetic or string views to avoid unnecessary copies 
+			std::string from_username = (msgs_vec[i].first)? "You" : username;
+			std::vector<std::string> msg_lines;
+			std::string whole_message = msgs_vec[i].second;
+			int str_len = whole_message.size();
+			int start = 0;
+			while (str_len > 0) {
+				// compute the substring
+				msg_lines.push_back(whole_message.substr(start, message_width));
+				str_len -= message_width;
+				start += message_width;
+			}
 
+			// now that we've split it up into appropriate lines, render them bottom up 
+			for (int j = msg_lines.size() - 1; j >= 0 && line_no >= 2; j--) {
+				mvwaddstr(app.chat_history, line_no, app.text_offset, msg_lines[j].c_str());
+				line_no--;
+			}
+
+			// print the username TODO: apparently wattron is legacy? i think it should be fine 
+			if (line_no >= 2) {
+				wattron(app.chat_history, A_STANDOUT);
+				mvwaddstr(app.chat_history, line_no, app.text_offset, from_username.c_str());
+				wattroff(app.chat_history, A_STANDOUT);
+				line_no--;
+			}
+			
+
+		}
 	}
 
 	wrefresh(win);
@@ -372,3 +399,59 @@ void render_history(AppState &app) {
 	}
 }
 
+// parse all the events in a vector
+void parse_events(AppState &app, std::vector<Event> events) {
+	// iterate through each event 
+	for (Event e : events) {
+		// for now, just handle incoming messages 
+		// TODO: add support for other event types 
+		if (e.type == EventType::INC_MSG) {
+			// push the message into the chat history 
+			app.chat_histories[e.user].push_back({false, e.payload});
+		
+			// set this user as unread if the window isn't currently open 
+			if (app.uids[app.selected_user] != e.user) {
+				app.chats_read[e.user] = false;
+			}
+
+			// TODO: add better logic for having most recent unread at the top
+			/*
+			// remove the user from the list of uids and push it onto the top
+			auto found = std::find(app.uids.begin(), app.uids.end(), e.user);
+
+			if (found != app.uids.end()) {
+				// check to see if we need to update the selected/highlighted user 
+				int ind = found - app.uids.begin();\
+
+				// update the selected user if necessary
+				if (ind == app.selected_user) {
+					app.selected_user = 0;
+				} else if (ind > app.selected_user) {
+					app.selected_user += 1;
+				}
+
+				// update the highlighted user if necessary 
+				if (ind == app.highlighted_user) {
+					app.highlighted_user = 0;
+				} else if (ind > app.highlighted_user) {
+					app.highlighted_user += 1;
+				}
+
+				// rotate the uid to the top 
+				std::rotate(app.uids.begin(), found, found + 1);
+			} */
+		
+		} else if (e.type == EventType::NEW_CONTACT) {
+			app.uids.push_back(e.user);
+			app.chats_read[e.user] = true;
+			app.uid_to_username[e.user] = e.payload;
+			app.username_to_uid[e.payload] = e.user;
+			app.chat_histories[e.user];
+			std::cerr << "User " << e.payload << " added to appstate\n";
+		}
+	}
+
+	if (!events.empty()) {
+		app.update_screen = true;
+	}
+}
