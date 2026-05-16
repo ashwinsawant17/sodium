@@ -34,6 +34,9 @@ enum class WindowFocus : uint8_t {
 typedef struct _app_state {
     
     // overall window management
+    // anchoring proportional dimensions
+    float usr_w_prop;
+    float in_h_prop;
     // window structures for curses
     WINDOW *contacts;
     WINDOW *chat_history;
@@ -123,7 +126,10 @@ void cleanup_tui(void);
 void cycle_focus(AppState &app, bool forward);
 
 // returns a tuple of 3 Windows (in the order of the WindowFocus enum) of appropriate sizes given the overall screen height and width
-std::tuple<WINDOW *, WINDOW *, WINDOW *> init_parent_windows(int height, int width);
+std::tuple<WINDOW *, WINDOW *, WINDOW *> init_parent_windows(int height, int width, float usr_w_prop, float in_h_prop);
+
+// resize the appstate after a size change 
+void resize_screen(AppState &app, int height, int width);
 
 // initialize an empty appstate
 AppState init_appstate();

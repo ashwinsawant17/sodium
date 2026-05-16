@@ -27,6 +27,7 @@ std::vector<Event> drain_queue(std::queue<Event> &queue, std::mutex &lock) {
 void init_tui(void) {
 	setlocale(LC_ALL, "");
 	initscr();
+	refresh();
 	cbreak();
 	nonl();
 	noecho();
@@ -55,12 +56,9 @@ void cycle_focus(AppState &app, bool forward) {
 }
 
 // returns a tuple of 3 Windows (in the order of the WindowFocus enum) of appropriate sizes given the overall screen height and width
-std::tuple<WINDOW *, WINDOW *, WINDOW *> init_parent_windows(int height, int width) {
+std::tuple<WINDOW *, WINDOW *, WINDOW *> init_parent_windows(int height, int width, float usr_w_prop, float in_h_prop) {
 
-	// set the anchoring values for the windows
-	const float usr_w_prop = 0.25f;
-	const float in_h_prop = 0.125f;
-
+	// use the proportional anchoring dimensions to generate the actual anchoring dimensinos
 	int usr_w = usr_w_prop * width;
 	int in_h = in_h_prop * height;
 
@@ -73,6 +71,36 @@ std::tuple<WINDOW *, WINDOW *, WINDOW *> init_parent_windows(int height, int wid
 	return std::tuple<WINDOW *, WINDOW *, WINDOW *>(users_sidebar, chat_history, chat_input);
 }
 
+// resize the appstate after a size change 
+void resize_screen(AppState &app, int height, int width) {
+	resize_term(height, width);
+
+	// delete the old windows 
+	delwin(app.contacts);
+	delwin(app.chat_history);
+	delwin(app.chat_in);
+
+	// clear the screen 
+	clear();
+
+	// create the new windows 
+	std::tie(app.contacts, app.chat_history, app.chat_in) = init_parent_windows(height, width, app.usr_w_prop, app.in_h_prop);
+
+
+	// update the other sizing parameters
+	getmaxyx(app.contacts, app.h_contacts, app.w_contacts);
+	getmaxyx(app.chat_history, app.h_history, app.w_history);
+	getmaxyx(app.chat_in, app.h_input, app.w_input);
+
+	render_contacts(app);
+	render_history(app);
+	render_input(app);
+
+	// require a screen update 
+	app.update_screen = true;
+	refresh();
+}
+
 // initialize an empty appstate
 AppState init_appstate() {
     
@@ -83,8 +111,13 @@ AppState init_appstate() {
 	int height, width;
 	getmaxyx(stdscr, height, width);
 
+	// set the anchoring proportional dimensions
+	// NOTE: this may also be defined in the struct definition, but the canonical value will be modified HERE
+	float usr_w_prop = 0.25f;
+    float in_h_prop = 0.125f;
+
 	// initialize the windows
-	auto [contacts, chat_history, chat_in] = init_parent_windows(height, width);
+	auto [contacts, chat_history, chat_in] = init_parent_windows(height, width, usr_w_prop, in_h_prop);
 
 	int h_contacts, w_contacts;
 	getmaxyx(contacts, h_contacts, w_contacts);
@@ -94,6 +127,8 @@ AppState init_appstate() {
 	getmaxyx(chat_in, h_input, w_input);
 
 	return {
+		.usr_w_prop = usr_w_prop,
+		.in_h_prop = in_h_prop,
 		.contacts = contacts,
 		.chat_history = chat_history,
 		.chat_in = chat_in,
