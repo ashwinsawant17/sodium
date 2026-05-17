@@ -6,4 +6,4 @@ target_link_libraries(sodium-server PRIVATE core)
 
 # Includes the directories from the include folder
 # technically don't need for now since target_link_libraries takes care of that
-target_include_directories(sodium-client PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(sodium-server PUBLIC ${PROJECT_SOURCE_DIR}/include)
